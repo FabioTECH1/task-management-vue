@@ -1,0 +1,12 @@
+module.exports = {
+    "client": {
+        "service": {
+            "name": "task-management",
+            "url": "http://127.0.0.1:8000/graphiql"
+        },
+        "includes": [
+            "src/**/*.vue",
+            "src/**/*.js"
+        ]
+    }
+}
