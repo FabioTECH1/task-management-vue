@@ -54,12 +54,13 @@ export default {
         }
 
 
-        const registerUser = () => {
-            const response: any = register(name.value, email.value, password.value)
-            console.log('done')
-            const response2: any = login(email.value, password.value)
-
-            // gotoPage('tasks')
+        const registerUser = async () => {
+            try {
+                await register(name.value, email.value, password.value)
+                gotoPage("tasks")
+            } catch (error) {
+                alert(error)
+            }
         }
 
         return {

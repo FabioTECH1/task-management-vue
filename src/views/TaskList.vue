@@ -7,7 +7,7 @@
         <div v-if="tasks.length > 0">
             <div class="mb-3">
                 <label for="statusFilter" class="form-label">Filter by Status:</label>
-                <select id="statusFilter" class="form-select shadow-none" v-model="selectedStatus">
+                <select id="statusFilter" class="form-select shadow-none" v-model="selectedStatus" @change="filterTasks">
                     <option value="all">All</option>
                     <option value="Not Started">Not Started</option>
                     <option value="In Progress">In Progress</option>
@@ -48,11 +48,12 @@
 </template>
   
 <script lang="ts">
-import { ref, computed, onBeforeMount } from 'vue'
+import { ref, onBeforeMount } from 'vue'
 import { useRouter } from 'vue-router';
-import { useQuery } from '@vue/apollo-composable'
 import gql from 'graphql-tag'
 import NavBar from '../views/NavBar.vue'
+import useApolloQuery from '@/services/useApolloQuery';
+import type { TaskType } from '@/types';
 
 
 export default {
@@ -61,7 +62,9 @@ export default {
     },
     setup() {
         const router = useRouter();
-        const mytasks = ref()
+        const tasks = ref<Array<TaskType>>([])
+        const filteredTasks = ref<Array<TaskType>>([])
+        const isLoading = ref(true)
         const selectedStatus = ref("all");
 
         const getStatusClass = (task: any) => {
@@ -83,61 +86,50 @@ export default {
             router.push({ name: pageName })
         }
 
-        const getTasks = gql`
-            query getUserTasks{
-                myTasks{
-                    id
-                    name
-                    tasks{
-                    id
-                    title
-                    description
-                    status
-                    due_date
+        const getTasks = async () => {
+            isLoading.value = true
+            const taskQuery = gql`
+                query getUserTasks{
+                    myTasks{
+                        id
+                        name
+                        tasks{
+                        id
+                        title
+                        description
+                        status
+                        due_date
+                        }
                     }
-                }
-            }`
-
-        const { loading, result, error } = useQuery(getTasks);
-        console.log(result)
-        // setTimeout(() => {
-        //     mytasks.value = result.value?.myTasks?.tasks
-        //     const id = result.value?.myTasks?.id
-        //     const name = result.value?.myTasks?.name
-        const USER_ID = 'user_id'
-        const USER_NAME = 'name'
-
-        //     console.log(error.value)
-        //     console.log(result.value)
-        // }, 1000);
-
-        const isLoading = computed(() =>
-            loading.value
-        );
-        const tasks = computed(() => {
-            if (result.value?.myTasks) {
-                localStorage.setItem(USER_ID, result.value.myTasks.id);
-                localStorage.setItem(USER_NAME, result.value.myTasks.name);
-                window.dispatchEvent(new Event('storage'))
+                }`
+    
+            try {
+                const result: any = await useApolloQuery(taskQuery);
+                isLoading.value = false
+                tasks.value = result.data.myTasks.tasks
+                filteredTasks.value = result.data.myTasks.tasks
+            } catch (error) {
+                alert(error);
             }
-            console.log(result.value);
-            return result.value?.myTasks?.tasks || []
-        });
-        console.log(tasks);
-        const filteredTasks = computed(() => {
+        }
+
+        const filterTasks = () => {
             if (selectedStatus.value === "all") {
-                return tasks.value;
+                filteredTasks.value = tasks.value;
             } else {
-                return tasks.value.filter(
+                filteredTasks.value = tasks.value.filter(
                     (task: { status: string; }
                     ) => task.status === selectedStatus.value);
             }
-        });
+        }
 
+        onBeforeMount(() => {
+            getTasks()
+        })
 
         return {
-            tasks, filteredTasks, selectedStatus, isLoading,
-            gotoPage, getStatusClass
+            tasks, selectedStatus, isLoading,
+            gotoPage, getStatusClass, filterTasks, filteredTasks
         }
     }
 };

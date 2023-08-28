@@ -40,6 +40,7 @@ import { useQuery, useMutation } from '@vue/apollo-composable';
 import { useRouter } from 'vue-router';
 import gql from 'graphql-tag';
 import { login } from '@/services/authService'
+import useApolloMutation from '@/services/useApolloMutation';
 
 
 export default {
@@ -53,9 +54,14 @@ export default {
             router.push({ name: pageName })
         }
 
-        const loginUser = () => {
-            const response: any = login(email.value, password.value)
-            console.log('done')
+        const loginUser = async () => {
+            try {
+                await login(email.value, password.value)
+                gotoPage("tasks")
+            } catch (error) {
+                alert(error);
+            }
+            
         }
 
         return {

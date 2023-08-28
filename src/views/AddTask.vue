@@ -34,6 +34,7 @@ import { useRouter } from 'vue-router';
 import NavBar from '../views/NavBar.vue'
 import { useMutation } from '@vue/apollo-composable'
 import gql from 'graphql-tag'
+import useApolloMutation from '@/services/useApolloMutation';
 
 
 export default {
@@ -49,9 +50,9 @@ export default {
         const gotoPage = (pageName: string) => {
             router.push(pageName)
         }
-        const USER_ID = 'user_id';
-        const id = localStorage.getItem(USER_ID);
-        const addTaskNow = () => {
+
+        const id = JSON.parse(localStorage.getItem('user') || '{}')?.user_id;
+        const addTaskNow = async () => {
             const addTask = gql`
             mutation CreateTask(
                 $title: String!, $description: String!, 
@@ -65,26 +66,19 @@ export default {
                         title
                     }
                 }`
-            const { mutate: createTask, onDone, error } = useMutation(
-                addTask, () => ({
-                    variables: {
-                        title: title.value,
-                        description: description.value,
-                        due_date: due_date.value,
-                        user_id: id
-                    },
-                }))
-
-            createTask()
-            onDone((res) => {
-                console.log(res)
-                if (!res.data.createTask) {
-                    alert('Something went wrong, try again')
-                } else {
-                    alert('Task added successfuly')
-                    gotoPage('tasks')
-                }
-            })
+            try {
+                const result = await useApolloMutation(addTask, {
+                    title: title.value,
+                    description: description.value,
+                    due_date: due_date.value,
+                    user_id: id
+                })
+                console.log(result);
+                gotoPage('tasks')
+                alert('Task added successfuly')
+            } catch (error) {
+                alert('Something went wrong, try again')
+            }
         }
         return {
             title, description, due_date,

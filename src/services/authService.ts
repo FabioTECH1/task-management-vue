@@ -1,9 +1,8 @@
 import { useMutation, useQuery } from '@vue/apollo-composable'
 import gql from 'graphql-tag'
+import useApolloMutation from './useApolloMutation';
 
-const TOKEN_KEY = 'token';
-
-export function register(name: string, email: string, password: string) {
+export async function register(name: string, email: string, password: string) {
     const getToken = gql`
             mutation registerUser(
                 $name: String!, 
@@ -18,30 +17,19 @@ export function register(name: string, email: string, password: string) {
                     }
                 }`
 
-    const { mutate: registerUser, error, onDone, } = useMutation(getToken,
-        () => ({
-            variables: {
-                name: name,
-                email: email,
-                password: password,
-            },
-        }));
-    registerUser()
-    if (error) {
-        console.log(error.value)
-        return 'error'
+    try {
+        await useApolloMutation(getToken, {
+            name,
+            email,
+            password,
+        });
+        await login(email, password)
+    } catch (error: any) {
+        throw new Error(error)
     }
-    console.log(login)
-
-    console.log('here')
-    return onDone((res) => {
-        if (res.data.register) {
-            const loginUser = login(res.data.register.email, res.data.register.password)
-        }
-    })
 }
 
-export function login(email: string, password: string) {
+export async function login(email: string, password: string) {
     const getToken = gql`
             mutation UserLogin(
                 $password:String!
@@ -50,34 +38,36 @@ export function login(email: string, password: string) {
                     email:$email, 
                     password:$password
                 ){
-                    token
+                    token,
+                    name,
+                    user_id
                 }}`
 
-    const { mutate: login, error, onDone } = useMutation(getToken,
-        () => ({
-            variables: {
-                email: email,
-                password: password,
-            },
-        }));
-    login()
-
-    onDone((res) => {
-        const token: string = res.data.login.token;
-        localStorage.setItem(TOKEN_KEY, token);
-    })
+    try {
+        const result: any = await useApolloMutation(getToken, {
+            email,
+            password,
+        });
+        const data: any = result.data.login;
+        localStorage.setItem("user", JSON.stringify(data))
+    } catch (error: any) {
+        throw new Error(error)        
+    }
 }
 
 
-export function logout() {
+export async function logout() {
 
-    const userLogout = gql`  
-        mutation userLogout{
-            logout
-        }`
-    const { mutate: logout, error, onDone } = useMutation(userLogout);
-    logout()
-    localStorage.removeItem(TOKEN_KEY);
+    // const userLogout = gql`  
+    //     mutation userLogout{
+    //         logout
+    //     }`
+    try {
+        // const res = await useApolloMutation(userLogout);
+        localStorage.clear();
+    } catch (error: any) {
+        throw new Error(error)
+    }
 }
 
 
@@ -85,7 +75,7 @@ export function logout() {
 
 
 export function isAuthenticated(): boolean {
-    const token = localStorage.getItem(TOKEN_KEY);
+    const token = JSON.parse(localStorage.getItem('user') || '{}').token;
     if (token) {
         return true
     }

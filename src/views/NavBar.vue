@@ -18,7 +18,7 @@
                             {{ name }}
                         </a>
                         <ul class="dropdown-menu" aria-labelledby="navbarScrollingDropdown">
-                            <li><a class="dropdown-item" href='' @click.prevent="logout">LogOut</a></li>
+                            <li><a class="dropdown-item" href='' @click.prevent="handleLogout">LogOut</a></li>
                         </ul>
                     </li>
                 </ul>
@@ -31,36 +31,28 @@ import { useRouter } from 'vue-router';
 import { useMutation } from '@vue/apollo-composable'
 import { ref, computed } from 'vue'
 import gql from 'graphql-tag'
+import useApolloMutation from '@/services/useApolloMutation';
+import { logout } from '@/services/authService';
 
 
 const router = useRouter();
-const USER_NAME = 'name'
-const TOKEN_KEY = 'token'
-const name = ref(window.localStorage.getItem(USER_NAME) || '')
+const name = ref(JSON.parse(window.localStorage.getItem('user') || '{}')?.name)
 
 window.onstorage = () => {
-    name.value = window.localStorage.getItem(USER_NAME) || ''
+    name.value = JSON.parse(window.localStorage.getItem('user') || '{}')?.name
 };
 
 const gotoPage = (pageName: string) => {
     router.push(pageName)
 }
 
-function logout() {
-
-    const userLogout = gql`  
-    mutation userLogout{
-        logout
-    }`
-
-    const { mutate: logout, onDone } = useMutation(userLogout);
-    logout()
-    onDone((res) => {
-        if (res.data.register) {
-            localStorage.removeItem(TOKEN_KEY);
-            gotoPage('login')
-        }
-    })
+const handleLogout = async () => {
+    try {
+        await logout()
+        gotoPage("login")
+    } catch (error) {
+        console.log(error)
+    }
 }
 
 </script>

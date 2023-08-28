@@ -12,7 +12,7 @@
             <a href="#" class="btn btn-primary mb-2" data-bs-toggle="modal" data-bs-target="#editTaskModal">Edit Task</a>
             <br>
             <div class="text-center">
-                <button class="btn btn-danger mb-2" data-id="1">Delete Task</button>
+                <button class="btn btn-danger mb-2" data-id="1" @click="deleteTask">Delete Task</button>
             </div>
 
         </div>
@@ -32,20 +32,20 @@
                     <form id="addTaskForm">
                         <div class="mb-3">
                             <label for="taskTitle" class="form-label">Title</label>
-                            <input v-model=task.title type="text" class="form-control shadow-none" id="taskTitle" required>
+                            <input v-model=title type="text" class="form-control shadow-none" id="taskTitle" required>
                         </div>
                         <div class="mb-3">
                             <label for="taskDescription" class="form-label"></label>
-                            <textarea v-model=task.description class="form-control shadow-none" id="taskDescription"
+                            <textarea v-model=description class="form-control shadow-none" id="taskDescription"
                                 rows="3" required></textarea>
                         </div>
                         <div class="mb-3">
                             <label for="dueDate" class="form-label">Due Date</label>
-                            <input v-model=task.due_date type="date" class="form-control shadow-none" id="dueDate" required>
+                            <input v-model=due_date type="date" class="form-control shadow-none" id="dueDate" required>
                         </div>
                         <div class="mb-3">
                             <label for="taskStatus" class="form-label">Status</label>
-                            <select v-model=task.status id="taskStatus" class="form-select shadow-none" required>
+                            <select v-model=status id="taskStatus" class="form-select shadow-none" required>
                                 <option value="Not Started">Not Started</option>
                                 <option value="In Progress">In Progress</option>
                                 <option value="Completed">Completed</option>
@@ -66,12 +66,15 @@
 </template>
   
 <script lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeMount } from 'vue'
 import { useRouter, useRoute } from 'vue-router';
 import { useQuery } from '@vue/apollo-composable'
 import gql from 'graphql-tag'
 import { updateTask } from '../../src/services/editTaskServices'
 import NavBar from '../views/NavBar.vue'
+import useApolloQuery from '@/services/useApolloQuery';
+import type { TaskType } from '@/types';
+import useApolloMutation from '@/services/useApolloMutation';
 
 
 export default {
@@ -87,44 +90,100 @@ export default {
             status: ''
         };
 
+        const defaultData = {
+            id: 0,
+            title: "",
+            due_date: "",
+            status: "",
+        }
+
         const gotoPage = (pageName: string) => {
             router.push({ name: pageName })
         }
         const route = useRoute();
-        const mytask = ref()
+        const task = ref<TaskType>(defaultData)
+        // const mytask = ref()
+        const title = ref("")
+        const description = ref("")
+        const due_date = ref("")
+        const status = ref("")
+
         const taskId = ref(route.params.id);
 
-        const getTask = gql`
-                    query getTask($id:ID!) {
-                    getTask(id:$id){
-                        id
-                        title
-                        description
-                        status 
-                        due_date
-                        }
-                    }`
-        const { loading, onResult, result, error } = useQuery(
-            getTask, {
-            id: taskId.value
-        });
-
-
-        const task = computed(() => result.value?.getTask || defaulttask)
-
-        const updateTaskNow = () => {
-            // console.log(id, task.value.title, task.value.description, task.value.due_date);
-            const response: any = updateTask(taskId.value, task.value.title, task.value.description, task.value.due_date, task.value.status)
-            if (response == 'error') {
-                alert('Something went wrong, try again')
+        const getTask = async () => {
+            try {
+                const taskQuery = gql`
+                            query getTask($id:ID!) {
+                            getTask(id:$id){
+                                id
+                                title
+                                description
+                                status 
+                                due_date
+                                }
+                            }`
+                const result: any = await useApolloQuery(taskQuery, {id: taskId.value})
+                const data = result.data.getTask
+                task.value = data
+                title.value = data.title
+                description.value = data.description
+                due_date.value = data.due_date
+                status.value = data.status
+            } catch (error) {
+                console.log(error);
             }
-            alert('task updated')
-            document.getElementById('close')?.click();
+
         }
+
+        const deleteTask = async () => {
+            const confirmDelete = confirm("Are you sure you want to delete this task?")
+
+            if(confirmDelete) {
+                const id = taskId.value as unknown as number
+                const deleteQuery = gql`
+                    mutation deleteTask($id:ID!) {
+                        deleteTask (id: $id) {
+                            id
+                        }
+                    }
+                `
+                try {
+                    const result = await useApolloMutation(deleteQuery, {id})
+                    alert(result); 
+                    gotoPage("tasks") 
+                } catch (error) {
+                    alert(error)
+                }
+            }
+        } 
+
+
+        const updateTaskNow = async () => {
+            const id = taskId.value as unknown as number
+            const data = {
+                id, 
+                title: title.value, 
+                description: description.value, 
+                due_date: due_date.value, 
+                status: status.value
+            }
+            try {
+                const response: any = await updateTask(data)
+                task.value = data
+                alert('task updated')
+                document.getElementById('close')?.click();
+            } catch (error) {
+                alert(error)
+            }
+        }
+
+        onBeforeMount(() => {
+            getTask()
+        })
 
         return {
             updateTaskNow,
-            gotoPage, task,
+            gotoPage, task, title, description, due_date, status, deleteTask
         }
     }
 };

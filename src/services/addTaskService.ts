@@ -29,17 +29,4 @@ export function addTask(title: string, description: string, due_date: string,) {
         }))
 
     createTask()
-
-    // const response = ref()
-    // onDone((res) => {
-    //     console.log(res)
-    //     response.value = res
-    // })
-    // console.log(response.value)
-    // if (response.value.data) {
-
-    //     return response.value.data
-    // }
-    // else { return 'error' }
-
 }

@@ -13,6 +13,6 @@ export function getTasks() {
         }
     }`
     const { loading, result, error } = useQuery(getTasks);
-    console.log(result)
+    alert(result)
     return result
 }
